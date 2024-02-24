@@ -25,6 +25,7 @@ struct BufferInfo
     unsigned int height; // 图象高度
     unsigned int frame_ix; // 帧编号
     unsigned char* p_buffer; // 缓冲区指针
+    unsigned char p_serial_number[INFO_MAX_BUFFER_SIZE]; // 设备序列号
 };
 
 

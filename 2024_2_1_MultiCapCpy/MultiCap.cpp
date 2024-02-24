@@ -65,6 +65,16 @@ int MultiCap::init_device() {
         frame_flag.emplace_back(false);
     }
     LOG::info() << "Opened " << this->device_obj_list.size() << " devices." << LOG::endl;
+    auto device_info_buffer = new MV_CC_DEVICE_INFO;
+    std::string serial_str = "Camera info:\n";
+    for (unsigned int cam_ix = 0; cam_ix < this->device_obj_list.size(); ++cam_ix) {
+        this->device_obj_list[cam_ix]->GetDeviceInfo(device_info_buffer);
+        serial_str += std::format("\tcam_id={}, serial_number={}\n",
+            cam_ix,
+            std::string{ reinterpret_cast<const char*>(device_info_buffer->SpecialInfo.stUsb3VInfo.chSerialNumber) });
+    }
+    LOG::info() << serial_str << LOG::endl;
+    delete device_info_buffer;
     return (int)this->device_obj_list.size();
 }
 
@@ -140,12 +150,12 @@ void MultiCap::_work_thread(unsigned int cam_ix) {
     buffer_info.p_buffer = new unsigned char[sizeof(unsigned char) * buffer_size];
 
     MV_FRAME_OUT_INFO_EX st_image_info{ 0 };
+    auto tmp_info_buffer = new MV_CC_DEVICE_INFO;
     LOG::info() << "Thread for cam_ix=" << cam_ix << " starts loop." << LOG::endl;
     while (b_grab) {
-        ReleaseSemaphore(h_sem_agg, 1, nullptr);
-        LOG::info() << std::format("[{}] cam_ix={} release h_sem_agg", step++, cam_ix) << LOG::endl;
         WaitForSingleObject(h_sem_continue, INFINITE);
         LOG::info() << std::format("[{}] cam_ix={} require h_sem_continue", step++, cam_ix) << LOG::endl;
+
         if (!b_grab) { break; } // 如果调用了 stop_grabbing，那么这句话直接退出循环
         ret = cam->GetOneFrameTimeout(
             buffer_info.p_buffer, buffer_size, &st_image_info, 1000);
@@ -153,11 +163,23 @@ void MultiCap::_work_thread(unsigned int cam_ix) {
             LOG::error() << std::format("Get one frame failed for cam_ix={}, error={}, frame_ix={}",
                 cam_ix, ret, st_image_info.nFrameNum) << LOG::endl;
         }
+        else {
+            LOG::error() << std::format("frame succeed, cam_ix={}, frame_ix={}", cam_ix, st_image_info.nFrameNum) << LOG::endl;
+        }
         frame_flag[cam_ix] = (ret == MV_OK);
         buffer_info.width = st_image_info.nWidth;
         buffer_info.height = st_image_info.nHeight;
         buffer_info.frame_ix = st_image_info.nFrameNum;
+
+        cam->GetDeviceInfo(tmp_info_buffer);
+        strcpy_s(reinterpret_cast<char*>(buffer_info.p_serial_number),
+            strlen(reinterpret_cast<const char*>(tmp_info_buffer->SpecialInfo.stUsb3VInfo.chSerialNumber)) + 1,
+            reinterpret_cast<const char*>(tmp_info_buffer->SpecialInfo.stUsb3VInfo.chSerialNumber));
+
+        ReleaseSemaphore(h_sem_agg, 1, nullptr);
+        LOG::info() << std::format("[{}] cam_ix={} release h_sem_agg", step++, cam_ix) << LOG::endl;
     }
+    delete tmp_info_buffer;
     LOG::info() << "Thread for cam_ix=" << cam_ix << " exits loop." << LOG::endl;
 
     // 释放缓冲区
@@ -173,7 +195,10 @@ void MultiCap::capture() {
     for (unsigned int fx = 0; fx < this->frame_flag.size(); ++fx) {
         this->frame_flag[fx] = false;
     }
-    // 首先进行全部触发
+    // 接受释放全部 h_sem_continue 信号量，允许线程执行
+    ReleaseSemaphore(h_sem_continue, (LONG) this->thread_list.size(), nullptr);
+    LOG::info() << std::format("[{}] Main release {} h_sem_conintue", step++, this->thread_list.size()) << LOG::endl;
+    // 进行全部触发
     for (unsigned int cam_ix = 0; cam_ix < this->device_obj_list.size(); cam_ix++) {
         auto* cam = this->device_obj_list[cam_ix];
         auto ret = cam->CommandExecute("TriggerSoftware");
@@ -184,10 +209,7 @@ void MultiCap::capture() {
         WaitForSingleObject(h_sem_agg, INFINITE);
         LOG::info() << std::format("[{}] Main require 1 h_sem_agg", step++) << LOG::endl;
     }
-    LOG::info() << std::format("[{}] Main required all h_sem_agg", step++) << LOG::endl;
-    // 接受释放全部 h_sem_continue 信号量，允许线程执行
-    ReleaseSemaphore(h_sem_continue, (LONG) this->thread_list.size(), nullptr);
-    LOG::info() << std::format("[{}] Main release {} h_sem_conintue", step++, this->thread_list.size()) << LOG::endl;
+    LOG::info() << std::format("[{}] Main has acquired all h_sem_agg", step++) << LOG::endl;
 }
 
 

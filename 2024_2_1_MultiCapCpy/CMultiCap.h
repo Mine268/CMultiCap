@@ -1,6 +1,7 @@
 #ifndef HEAD_CMULTICAP
 #define HEAD_CMULTICAP
 
+constexpr unsigned int INFO_MAX_BUFFER_SIZE = 64;
 constexpr unsigned int MAX_CAPTURE = 16;
 
 
@@ -12,6 +13,7 @@ extern "C" {
         unsigned int width[MAX_CAPTURE];  // 每一个捕捉的宽度
         unsigned int height[MAX_CAPTURE];  // 每一个图像的高度
         unsigned char* ppbuffer[MAX_CAPTURE];  // 每一个捕捉的缓冲区的指针
+        unsigned char serial_numbers[MAX_CAPTURE][INFO_MAX_BUFFER_SIZE]; // 每一个捕捉的图像对应相机的序列号
     };
 
     // 获得单例

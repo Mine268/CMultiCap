@@ -46,6 +46,9 @@ extern "C" {
             cap_info.width[cap_ix] = multicap_obj->frame_buffer_list[cap_ix].width;
             cap_info.height[cap_ix] = multicap_obj->frame_buffer_list[cap_ix].height;
             cap_info.ppbuffer[cap_ix] = multicap_obj->frame_buffer_list[cap_ix].p_buffer;
+            strcpy_s(reinterpret_cast<char*>(cap_info.serial_numbers[cap_ix]), 
+                strlen(reinterpret_cast<const char*>(multicap_obj->frame_buffer_list[cap_ix].p_serial_number)) + 1,
+                reinterpret_cast<const char*>(multicap_obj->frame_buffer_list[cap_ix].p_serial_number));
         }
 
         return cap_info;
