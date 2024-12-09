@@ -51,11 +51,26 @@ int MultiCap::init_device() {
         auto nRet2 = cam_tmp->SetEnumValue("TriggerMode", 1); // 设置该相机的拍摄模式为触发模式
         auto nRet3 = cam_tmp->SetEnumValue("TriggerSource", 7); // 设置触发源为软触发
         auto nRet4 = cam_tmp->SetEnumValue("PixelFormat", PixelType_Gvsp_RGB8_Packed); // 设置输出为 RGB 8 格式
-        if (nRet1 != MV_OK || nRet2 != MV_OK || nRet3 != MV_OK || nRet4 != MV_OK) {
-            if (nRet1 != MV_OK) { LOG::info() << "Cannot open the device " << enum_ix << "." << LOG::endl; }
-            if (nRet2 != MV_OK) { LOG::info() << "Cannot set the trigger mode for the device " << enum_ix << "." << LOG::endl; }
-            if (nRet3 != MV_OK) { LOG::info() << "Cannot set the trigger source for the device " << enum_ix << "." << LOG::endl; }
-            if (nRet4 != MV_OK) { LOG::info() << "Cannot set the pixel format for the device " << enum_ix << "." << LOG::endl; }
+        auto nRet5 = cam_tmp->SetBoolValue("GammaEnable", true); // 开启gamma矫正
+        auto nRet6 = cam_tmp->SetEnumValue("GammaSelector", 2); // gamma矫正类型
+        if (nRet1 != MV_OK) {
+            LOG::info() << "Cannot open the device " << enum_ix << "." << LOG::endl;
+            continue;
+        }
+        if (nRet2 != MV_OK) {
+            LOG::info() << "Cannot set the trigger mode for the device " << enum_ix << "." << LOG::endl;
+            continue;
+        }
+        if (nRet3 != MV_OK) {
+            LOG::info() << "Cannot set the trigger source for the device " << enum_ix << "." << LOG::endl;
+            continue;
+        }
+        if (nRet4 != MV_OK) {
+            LOG::info() << "Cannot set the pixel format for the device " << enum_ix << "." << LOG::endl;
+            continue;
+        }
+        if (nRet5 != MV_OK || nRet6 != MV_OK) {
+            LOG::info() << "Cannot configure gamma correction for the device " << enum_ix << "." << LOG::endl;
             continue;
         }
         this->device_obj_list.push_back(cam_tmp);
@@ -151,6 +166,7 @@ void MultiCap::_work_thread(unsigned int cam_ix) {
 
     MV_FRAME_OUT_INFO_EX st_image_info{ 0 };
     auto tmp_info_buffer = new MV_CC_DEVICE_INFO;
+    cam->GetDeviceInfo(tmp_info_buffer);
     LOG::info() << "Thread for cam_ix=" << cam_ix << " starts loop." << LOG::endl;
     while (b_grab) {
         WaitForSingleObject(h_sem_continue, INFINITE);
@@ -170,8 +186,6 @@ void MultiCap::_work_thread(unsigned int cam_ix) {
         buffer_info.width = st_image_info.nWidth;
         buffer_info.height = st_image_info.nHeight;
         buffer_info.frame_ix = st_image_info.nFrameNum;
-
-        cam->GetDeviceInfo(tmp_info_buffer);
         strcpy_s(reinterpret_cast<char*>(buffer_info.p_serial_number),
             strlen(reinterpret_cast<const char*>(tmp_info_buffer->SpecialInfo.stUsb3VInfo.chSerialNumber)) + 1,
             reinterpret_cast<const char*>(tmp_info_buffer->SpecialInfo.stUsb3VInfo.chSerialNumber));

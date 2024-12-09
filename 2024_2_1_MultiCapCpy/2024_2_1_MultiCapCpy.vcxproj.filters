@@ -53,13 +53,13 @@
     <ClCompile Include="MultiCap.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="stb_image_write.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="CMultiCap.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="main_StereoCapture.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

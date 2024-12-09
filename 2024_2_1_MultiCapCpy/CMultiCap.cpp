@@ -32,7 +32,7 @@ extern "C" {
     }
 
     __declspec(dllexport) auto capture() -> CaptureInfo {
-        CaptureInfo cap_info;
+        CaptureInfo cap_info{};
 
         multicap_obj->capture();
         cap_info.n_cap = multicap_obj->device_obj_list.size();
